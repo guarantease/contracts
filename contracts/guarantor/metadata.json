@@ -1,0 +1,9 @@
+{
+    "name": "GuarantEease Guarantor Contract",
+    "description": "<GuarantEease-description>",
+    "version": "1.0",
+    "license": { "name": "UNLICENSED" },
+    "authors": ["Flydexo <flydexo@gmail.com>"],
+    "homepage": "<GuarantEease-website>",
+    "interfaces": ["TZIP-016"]
+  }

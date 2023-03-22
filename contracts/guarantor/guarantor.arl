@@ -1,0 +1,3 @@
+archetype guarantor(const owner: address, const backer: address, const renter: address, rent: nat, rentToken: contract<address>)
+with metadata "ipfs://QmTVp5CUhNnZPF9mZYu8ZoXfF4toPmEY347DUGAXwbVDYD"
+

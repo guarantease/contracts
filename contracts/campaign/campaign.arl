@@ -1,12 +1,12 @@
 archetype campaign(
-    const fee_recipient: address, 
-    // const fee: rational,
-    const renter: address, 
-    const rent_token_per_share: nat, 
-    const rent_token: address,
-    // FA 1.2
-    const max_supply : nat, 
-    const metadata_coin : bytes
+  const fee_recipient: address, 
+  // const fee: rational,
+  const renter: address, 
+  const rent_token_per_share: nat, 
+  const rent_token: address,
+  // FA 1.2
+  const max_supply : nat, 
+  const metadata_coin : bytes
 )
 
 states = | DepositsEnabled initial | SearchingOwner | Expired | Locked

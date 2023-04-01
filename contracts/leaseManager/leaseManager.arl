@@ -1,0 +1,30 @@
+archetype leaseManager
+
+import usdc from "./contracts/usdc/usdc.arl"
+import campaign from "./contracts/campaign/campaign.arl"
+
+states = | Unitialized initial | Initialized | Canceled
+
+constant globalLocker: address = KT1LP5MjfRKNJcu174T3DwrPMcq1nsoYHuMu
+
+variable lpToken: option<address> = none
+variable underlyingToken: option<address> = none
+variable lpTokenMaxSupply: nat = 0
+
+// set the underlying lp to caller
+transition intialize(lunderlyingToken: address, max_supply: nat) {
+    from Unitialized
+    to Initialized
+    with effect {
+        lpTokenMaxSupply := max_supply;
+        underlyingToken := some(lunderlyingToken);
+        lpToken := some(caller);
+        match underlyingToken with
+        | some(token) -> 
+            transfer 0tz to entry usdc(token).%transfer((caller, self_address, max_supply));
+            transfer 0tz to entry usdc(token).approve((globalLocker, max_supply))
+            // call globalLocker
+        | none -> fail("")
+        end
+    }
+}

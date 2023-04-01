@@ -1,13 +1,13 @@
 archetype campaign(
-  const fee_recipient: address, 
-  // const fee: rational,
   const renter: address, 
-  const rent_token_per_share: nat, 
   const rent_token: address,
   // FA 1.2
   const max_supply : nat, 
   const metadata_coin : bytes
 )
+
+import usdc from "./contracts/usdc/usdc.arl"
+// import leaseManager from "./contracts/leaseManager/leaseManager.arl"
 
 states = | DepositsEnabled initial | SearchingOwner | Expired | Locked
 
@@ -57,9 +57,9 @@ entry buy_shares(amount: nat) {
     not_expired_to_buy: init_time + 4w > now;
   }
   effect {
-    total_supply += amount * 1000000000000;
-    ledger.add_update(caller, { tokens += (amount * 1000000000000) });
-    transfer 0tz to rent_token call %transfer<address * address * nat>((caller, self_address, (amount * rent_token_per_share)));
+    total_supply += amount;
+    ledger.add_update(caller, { tokens += (amount) });
+    transfer 0tz to rent_token call %transfer<address * address * nat>((caller, self_address, amount));
   }
 }
 
@@ -81,6 +81,10 @@ transition settle_lock(owner: address) {
   }
   from SearchingOwner
   to Locked
+  // with effect {
+  //   const op_addr : (operation * address) = create_contract(leaseManager, none, 0tz, storage_init);
+  //   transfer 0tz to entry usdc(rent_token).approve(());
+  // }
 }
 
 transition cancel_campaign_for_insufficient_funds() {
@@ -106,7 +110,7 @@ entry refund_shares() {
   state is Expired
   effect {
     const caller_balance ?= call_view<nat>(self_address, "vgetBalance", caller) : 0;
-    transfer 0tz to rent_token call %transfer<address * address * nat>((self_address, caller, caller_balance * rent_token_per_share));
+    transfer 0tz to rent_token call %transfer<address * address * nat>((self_address, caller, caller_balance));
     ledger.remove(caller);
   }
 }

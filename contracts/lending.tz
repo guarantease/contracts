@@ -1,0 +1,686 @@
+parameter (or
+            (or (or (or (nat %accept) (address %addAdmin)) (or (nat %cancel) (unit %claim)))
+                (or (or (unit %flush) (nat %liquidate))
+                    (or
+                      (pair %propose
+                        (pair
+                          (pair
+                            (pair %collateral
+                              (or %currency (unit %xtz)
+                                            (or (address %fa1)
+                                                (pair %fa2 (address %address) (nat %id))))
+                              (nat %amount))
+                            (nat %duration))
+                          (nat %interest)
+                          (pair %principal
+                            (or %currency (unit %xtz)
+                                          (or (address %fa1)
+                                              (pair %fa2 (address %address) (nat %id))))
+                            (nat %amount)))
+                        (timestamp %timeout))
+                      (address %removeAdmin))))
+            (nat %repay));
+storage (pair
+          (big_map %proposals nat
+                              (pair
+                                (pair %loan (nat %id)
+                                            (pair %principal
+                                              (or %currency (unit %xtz)
+                                                            (or (address %fa1)
+                                                                (pair %fa2 (address %address)
+                                                                           (nat %id))))
+                                              (nat %amount))
+                                            (nat %interest)
+                                            (pair %collateral
+                                              (or %currency (unit %xtz)
+                                                            (or (address %fa1)
+                                                                (pair %fa2 (address %address)
+                                                                           (nat %id))))
+                                              (nat %amount))
+                                            (nat %duration))
+                                (address %lender)
+                                (timestamp %timeout)))
+          (big_map %ongoings nat
+                             (pair
+                               (pair %loan (nat %id)
+                                           (pair %principal
+                                             (or %currency (unit %xtz)
+                                                           (or (address %fa1)
+                                                               (pair %fa2 (address %address)
+                                                                          (nat %id))))
+                                             (nat %amount))
+                                           (nat %interest)
+                                           (pair %collateral
+                                             (or %currency (unit %xtz)
+                                                           (or (address %fa1)
+                                                               (pair %fa2 (address %address)
+                                                                          (nat %id))))
+                                             (nat %amount))
+                                           (nat %duration))
+                               (address %lender)
+                               (address %borrower)
+                               (timestamp %maturity)))
+          (big_map %payments address
+                             (list (pair
+                                    (or %currency (unit %xtz)
+                                                  (or (address %fa1)
+                                                      (pair %fa2 (address %address) (nat %id))))
+                                    (nat %amount))))
+          (list %free_ids nat)
+          (nat %max_id)
+          (set %admins address)
+          (big_map %metadata string bytes));
+code { PUSH string "Contract not found" ;
+       LAMBDA
+         (pair string (pair (or unit (or address (pair address nat))) address address nat))
+         (option operation)
+         { UNPAIR ;
+           SWAP ;
+           UNPAIR 4 ;
+           IF_LEFT
+             { DROP ;
+               SELF_ADDRESS ;
+               PUSH mutez 1 ;
+               DIG 4 ;
+               MUL ;
+               AMOUNT ;
+               DUP 3 ;
+               DUP 5 ;
+               COMPARE ;
+               NEQ ;
+               IF
+                 { DIG 3 ;
+                   SENDER ;
+                   COMPARE ;
+                   NEQ ;
+                   IF { PUSH string "CannotTransfertTezFromOtherThanTheSender" ; FAILWITH } {} ;
+                   DUP 2 ;
+                   AMOUNT ;
+                   COMPARE ;
+                   LT ;
+                   IF
+                     { DROP ; PUSH string "Not enough token transfered to contract" ; FAILWITH }
+                     { DUP 2 ;
+                       SWAP ;
+                       COMPARE ;
+                       LT ;
+                       IF { PUSH string "Too much token transfered to contract" ; FAILWITH } {} } }
+                 { DIG 3 ; DROP 2 } ;
+               SWAP ;
+               DUP 3 ;
+               COMPARE ;
+               EQ ;
+               IF
+                 { DROP 3 ; NONE operation }
+                 { SWAP ;
+                   CONTRACT unit ;
+                   IF_NONE
+                     { DROP ; FAILWITH }
+                     { DIG 2 ; DROP ; SWAP ; UNIT ; TRANSFER_TOKENS ; SOME } } }
+             { IF_LEFT
+                 { CONTRACT %transfer (pair address address nat) ;
+                   IF_NONE
+                     { DROP 3 ; FAILWITH }
+                     { DIG 4 ; DROP ; PUSH mutez 0 ; DIG 4 ; DIG 4 ; PAIR ; DIG 3 ; PAIR ; TRANSFER_TOKENS ; SOME } }
+                 { UNPAIR ;
+                   CONTRACT %transfer (list (pair (address %from_)
+                                                 (list %tx (pair (address %to_) (nat %token_id)
+                                                                (nat %amount))))) ;
+                   IF_NONE
+                     { DROP 4 ; FAILWITH }
+                     { DIG 5 ;
+                       DROP ;
+                       PUSH mutez 0 ;
+                       NIL (pair address (list (pair address nat nat))) ;
+                       NIL (pair address nat nat) ;
+                       DIG 7 ;
+                       DIG 5 ;
+                       DIG 7 ;
+                       PAIR 3 ;
+                       CONS ;
+                       DIG 4 ;
+                       PAIR ;
+                       CONS ;
+                       TRANSFER_TOKENS ;
+                       SOME } } } } ;
+       DUP 2 ;
+       APPLY ;
+       SWAP ;
+       DROP ;
+       LAMBDA
+         (list (option operation))
+         (list operation)
+         { NIL operation ; SWAP ; ITER { IF_NONE {} { CONS } } } ;
+       PUSH string "No loan with id was found in the open proposals" ;
+       PUSH string "No loan with id was found in the ongoing loans" ;
+       LAMBDA
+         (pair
+           (pair
+             (big_map nat
+                      (pair
+                        (pair nat (pair (or unit (or address (pair address nat))) nat) nat
+                              (pair (or unit (or address (pair address nat))) nat)
+                              nat)
+                        address
+                        timestamp))
+             (big_map nat
+                      (pair
+                        (pair nat (pair (or unit (or address (pair address nat))) nat) nat
+                              (pair (or unit (or address (pair address nat))) nat)
+                              nat)
+                        address
+                        address
+                        timestamp))
+             (big_map address (list (pair (or unit (or address (pair address nat))) nat)))
+             (list nat)
+             nat
+             (set address)
+             (big_map string bytes))
+           address
+           unit)
+         unit
+         { UNPAIR 3 ;
+           DIG 2 ;
+           DROP ;
+           GET 11 ;
+           SWAP ;
+           MEM ;
+           IF { UNIT } { PUSH string "Admin reserved operation" ; FAILWITH } } ;
+       DIG 5 ;
+       UNPAIR ;
+       IF_LEFT
+         { IF_LEFT
+             { DIG 3 ;
+               DROP ;
+               IF_LEFT
+                 { IF_LEFT
+                     { DIG 2 ;
+                       DROP ;
+                       SELF_ADDRESS ;
+                       SENDER ;
+                       DIG 4 ;
+                       DUP 5 ;
+                       CAR ;
+                       DUP 5 ;
+                       GET ;
+                       MAP { UNPAIR 3 ;
+                             DIG 2 ;
+                             NOW ;
+                             COMPARE ;
+                             LT ;
+                             IF {} { PUSH string "Can't accept loan after timeout" ; FAILWITH } ;
+                             DUP ;
+                             UNPAIR 5 ;
+                             DIG 2 ;
+                             DROP 2 ;
+                             DIG 2 ;
+                             INT ;
+                             NOW ;
+                             ADD ;
+                             DUG 2 ;
+                             DUP 10 ;
+                             DUP 11 ;
+                             CAR ;
+                             DUP 11 ;
+                             NONE (pair
+                                    (pair nat (pair (or unit (or address (pair address nat))) nat)
+                                          nat
+                                          (pair (or unit (or address (pair address nat))) nat)
+                                          nat)
+                                    address
+                                    timestamp) ;
+                             SWAP ;
+                             UPDATE ;
+                             UPDATE 1 ;
+                             DUP 11 ;
+                             GET 3 ;
+                             DIG 4 ;
+                             DUP 9 ;
+                             DIG 7 ;
+                             DIG 7 ;
+                             PAIR 4 ;
+                             DUP 9 ;
+                             SWAP ;
+                             SOME ;
+                             SWAP ;
+                             UPDATE ;
+                             UPDATE 3 ;
+                             PAIR ;
+                             PAIR } ;
+                       DIG 4 ;
+                       DIG 5 ;
+                       DROP 2 ;
+                       IF_NONE { FAILWITH } { SWAP ; DROP } ;
+                       UNPAIR ;
+                       UNPAIR ;
+                       DUP 3 ;
+                       CDR ;
+                       DUP 6 ;
+                       DUP 6 ;
+                       DIG 5 ;
+                       CAR ;
+                       PAIR 4 ;
+                       DUP 7 ;
+                       SWAP ;
+                       EXEC ;
+                       DUP 3 ;
+                       CDR ;
+                       DIG 4 ;
+                       DIG 5 ;
+                       DIG 5 ;
+                       CAR ;
+                       PAIR 4 ;
+                       DIG 4 ;
+                       SWAP ;
+                       EXEC ;
+                       DIG 2 ;
+                       NIL (option operation) ;
+                       DIG 2 ;
+                       CONS ;
+                       DIG 2 ;
+                       CONS ;
+                       DIG 2 ;
+                       SWAP ;
+                       EXEC }
+                     { DIG 3 ;
+                       DIG 4 ;
+                       DIG 5 ;
+                       DROP 3 ;
+                       UNIT ;
+                       SENDER ;
+                       DUP 4 ;
+                       PAIR 3 ;
+                       DIG 3 ;
+                       SWAP ;
+                       EXEC ;
+                       DROP ;
+                       DUP 2 ;
+                       DIG 2 ;
+                       GET 11 ;
+                       DIG 2 ;
+                       PUSH bool True ;
+                       SWAP ;
+                       UPDATE ;
+                       UPDATE 11 ;
+                       NIL operation } }
+                 { DIG 2 ;
+                   DROP ;
+                   IF_LEFT
+                     { SENDER ;
+                       SELF_ADDRESS ;
+                       DIG 4 ;
+                       DUP 5 ;
+                       CAR ;
+                       DUP 5 ;
+                       GET ;
+                       MAP { DUP 4 ;
+                             DUP 2 ;
+                             GET 3 ;
+                             COMPARE ;
+                             EQ ;
+                             IF
+                               {}
+                               { PUSH string "Only the lender can cancel a proposal before timeout" ;
+                                 FAILWITH } ;
+                             CAR ;
+                             GET 3 ;
+                             DUP 6 ;
+                             DUP 7 ;
+                             CAR ;
+                             DUP 7 ;
+                             NONE (pair
+                                    (pair nat (pair (or unit (or address (pair address nat))) nat)
+                                          nat
+                                          (pair (or unit (or address (pair address nat))) nat)
+                                          nat)
+                                    address
+                                    timestamp) ;
+                             SWAP ;
+                             UPDATE ;
+                             UPDATE 1 ;
+                             DUP 7 ;
+                             GET 7 ;
+                             DUP 7 ;
+                             CONS ;
+                             UPDATE 7 ;
+                             PAIR } ;
+                       DIG 4 ;
+                       DIG 5 ;
+                       DROP 2 ;
+                       IF_NONE { FAILWITH } { SWAP ; DROP } ;
+                       UNPAIR ;
+                       DUP 2 ;
+                       CDR ;
+                       DIG 4 ;
+                       DIG 4 ;
+                       DIG 4 ;
+                       CAR ;
+                       PAIR 4 ;
+                       DIG 3 ;
+                       SWAP ;
+                       EXEC ;
+                       SWAP ;
+                       NIL (option operation) ;
+                       DIG 2 ;
+                       CONS ;
+                       DIG 2 ;
+                       SWAP ;
+                       EXEC }
+                     { DIG 2 ;
+                       DROP 2 ;
+                       SELF_ADDRESS ;
+                       SENDER ;
+                       PUSH string "No payment found for the this users" ;
+                       DUP 4 ;
+                       GET 5 ;
+                       DUP 3 ;
+                       GET ;
+                       MAP { DUP 5 ;
+                             DUP 6 ;
+                             GET 5 ;
+                             DUP 5 ;
+                             NONE (list (pair (or unit (or address (pair address nat))) nat)) ;
+                             SWAP ;
+                             UPDATE ;
+                             UPDATE 5 ;
+                             PAIR } ;
+                       DIG 4 ;
+                       DROP ;
+                       IF_NONE { FAILWITH } { SWAP ; DROP } ;
+                       UNPAIR ;
+                       SWAP ;
+                       MAP { UNPAIR ; SWAP ; DUP 4 ; DUP 6 ; DIG 3 ; PAIR 4 ; DUP 6 ; SWAP ; EXEC } ;
+                       DIG 2 ;
+                       DIG 3 ;
+                       DIG 5 ;
+                       DROP 3 ;
+                       DIG 2 ;
+                       SWAP ;
+                       EXEC } } }
+             { DIG 4 ;
+               DROP ;
+               IF_LEFT
+                 { DIG 4 ;
+                   DIG 5 ;
+                   DROP 2 ;
+                   IF_LEFT
+                     { DIG 3 ;
+                       DROP 2 ;
+                       UNIT ;
+                       SENDER ;
+                       DUP 3 ;
+                       PAIR 3 ;
+                       DIG 2 ;
+                       SWAP ;
+                       EXEC ;
+                       DROP ;
+                       EMPTY_BIG_MAP nat
+                                      (pair
+                                        (pair nat
+                                              (pair (or unit (or address (pair address nat))) nat)
+                                              nat
+                                              (pair (or unit (or address (pair address nat))) nat)
+                                              nat)
+                                        address
+                                        timestamp) ;
+                       UPDATE 1 ;
+                       EMPTY_BIG_MAP nat
+                                      (pair
+                                        (pair nat
+                                              (pair (or unit (or address (pair address nat))) nat)
+                                              nat
+                                              (pair (or unit (or address (pair address nat))) nat)
+                                              nat)
+                                        address
+                                        address
+                                        timestamp) ;
+                       UPDATE 3 ;
+                       EMPTY_BIG_MAP address
+                                      (list (pair (or unit (or address (pair address nat))) nat)) ;
+                       UPDATE 5 ;
+                       NIL nat ;
+                       UPDATE 7 ;
+                       PUSH nat 0 ;
+                       UPDATE 9 }
+                     { DIG 2 ;
+                       DROP ;
+                       DIG 2 ;
+                       DUP 3 ;
+                       GET 3 ;
+                       DUP 3 ;
+                       GET ;
+                       MAP { UNPAIR 4 ;
+                             DIG 2 ;
+                             DROP ;
+                             NOW ;
+                             DIG 3 ;
+                             COMPARE ;
+                             GT ;
+                             IF
+                               {}
+                               { PUSH string "Liquidate is only authorized after timeout" ; FAILWITH } ;
+                             GET 7 ;
+                             DUP 5 ;
+                             DUP 6 ;
+                             GET 3 ;
+                             DUP 6 ;
+                             NONE (pair
+                                    (pair nat (pair (or unit (or address (pair address nat))) nat)
+                                          nat
+                                          (pair (or unit (or address (pair address nat))) nat)
+                                          nat)
+                                    address
+                                    address
+                                    timestamp) ;
+                             SWAP ;
+                             UPDATE ;
+                             UPDATE 3 ;
+                             DUP 6 ;
+                             GET 5 ;
+                             DUP 7 ;
+                             GET 5 ;
+                             DUP 5 ;
+                             GET ;
+                             IF_NONE
+                               { NIL (pair (or unit (or address (pair address nat))) nat) }
+                               {} ;
+                             DIG 3 ;
+                             CONS ;
+                             SOME ;
+                             DIG 3 ;
+                             UPDATE ;
+                             UPDATE 5 ;
+                             DUP 4 ;
+                             GET 7 ;
+                             DUP 4 ;
+                             CONS ;
+                             UPDATE 7 } ;
+                       DIG 2 ;
+                       DIG 3 ;
+                       DROP 2 ;
+                       IF_NONE { FAILWITH } { SWAP ; DROP } } ;
+                   NIL operation }
+                 { DIG 3 ;
+                   DROP ;
+                   IF_LEFT
+                     { DIG 2 ;
+                       DROP ;
+                       UNPAIR ;
+                       UNPAIR ;
+                       UNPAIR ;
+                       DIG 2 ;
+                       UNPAIR ;
+                       DUP 6 ;
+                       GET 7 ;
+                       IF_CONS
+                         { DIG 7 ; DIG 2 ; UPDATE 7 ; SWAP }
+                         { DUP 6 ; PUSH nat 1 ; DUP 8 ; GET 9 ; ADD ; UPDATE 9 ; DIG 6 ; GET 9 } ;
+                       SENDER ;
+                       SELF_ADDRESS ;
+                       DUP 6 ;
+                       CDR ;
+                       SWAP ;
+                       DUP 3 ;
+                       DUP 8 ;
+                       CAR ;
+                       PAIR 4 ;
+                       DIG 10 ;
+                       SWAP ;
+                       EXEC ;
+                       DIG 7 ;
+                       DIG 7 ;
+                       DIG 6 ;
+                       DIG 7 ;
+                       DIG 6 ;
+                       PAIR 5 ;
+                       DUP 4 ;
+                       DIG 4 ;
+                       CAR ;
+                       DIG 5 ;
+                       DIG 5 ;
+                       DUP 5 ;
+                       PAIR 3 ;
+                       DIG 3 ;
+                       CAR ;
+                       SWAP ;
+                       SOME ;
+                       SWAP ;
+                       UPDATE ;
+                       UPDATE 1 ;
+                       NIL (option operation) ;
+                       DIG 2 ;
+                       CONS ;
+                       DIG 2 ;
+                       SWAP ;
+                       EXEC }
+                     { DIG 3 ;
+                       DIG 4 ;
+                       DROP 2 ;
+                       UNIT ;
+                       SENDER ;
+                       DUP 4 ;
+                       PAIR 3 ;
+                       DIG 3 ;
+                       SWAP ;
+                       EXEC ;
+                       DROP ;
+                       PUSH nat 2 ;
+                       DUP 3 ;
+                       GET 11 ;
+                       SIZE ;
+                       COMPARE ;
+                       LT ;
+                       IF {} { PUSH string "can't remove last admin" ; FAILWITH } ;
+                       DUP 2 ;
+                       DIG 2 ;
+                       GET 11 ;
+                       DIG 2 ;
+                       PUSH bool False ;
+                       SWAP ;
+                       UPDATE ;
+                       UPDATE 11 ;
+                       NIL operation } } } }
+         { DIG 2 ;
+           DIG 4 ;
+           DROP 2 ;
+           SELF_ADDRESS ;
+           SENDER ;
+           DIG 4 ;
+           DUP 5 ;
+           GET 3 ;
+           DUP 5 ;
+           GET ;
+           MAP { UNPAIR 4 ;
+                 DIG 3 ;
+                 DROP ;
+                 DIG 2 ;
+                 DUP 5 ;
+                 COMPARE ;
+                 EQ ;
+                 IF {} { PUSH string "Only the borrower can repay the loan" ; FAILWITH } ;
+                 UNPAIR 5 ;
+                 DIG 4 ;
+                 DROP 2 ;
+                 DUP 9 ;
+                 GET 5 ;
+                 DUP 5 ;
+                 GET ;
+                 IF_NONE { NIL (pair (or unit (or address (pair address nat))) nat) } {} ;
+                 DUP 2 ;
+                 DUP 4 ;
+                 DUP 4 ;
+                 CDR ;
+                 ADD ;
+                 UPDATE 2 ;
+                 CONS ;
+                 DIG 3 ;
+                 DIG 3 ;
+                 PAIR ;
+                 DIG 2 ;
+                 DUP 9 ;
+                 DUP 10 ;
+                 GET 3 ;
+                 DUP 10 ;
+                 NONE (pair
+                        (pair nat (pair (or unit (or address (pair address nat))) nat) nat
+                              (pair (or unit (or address (pair address nat))) nat)
+                              nat)
+                        address
+                        address
+                        timestamp) ;
+                 SWAP ;
+                 UPDATE ;
+                 UPDATE 3 ;
+                 DUP 10 ;
+                 GET 5 ;
+                 DIG 4 ;
+                 SOME ;
+                 DIG 5 ;
+                 UPDATE ;
+                 UPDATE 5 ;
+                 DUP 8 ;
+                 GET 7 ;
+                 DUP 8 ;
+                 CONS ;
+                 UPDATE 7 ;
+                 PAIR ;
+                 PAIR } ;
+           DIG 4 ;
+           DIG 5 ;
+           DROP 2 ;
+           IF_NONE { FAILWITH } { SWAP ; DROP } ;
+           UNPAIR ;
+           UNPAIR ;
+           DIG 2 ;
+           UNPAIR ;
+           DUP 4 ;
+           CDR ;
+           ADD ;
+           DUP 6 ;
+           DUP 6 ;
+           DIG 5 ;
+           CAR ;
+           PAIR 4 ;
+           DUP 7 ;
+           SWAP ;
+           EXEC ;
+           DUP 2 ;
+           CDR ;
+           DIG 4 ;
+           DIG 5 ;
+           DIG 4 ;
+           CAR ;
+           PAIR 4 ;
+           DIG 4 ;
+           SWAP ;
+           EXEC ;
+           DIG 2 ;
+           NIL (option operation) ;
+           DIG 2 ;
+           CONS ;
+           DIG 2 ;
+           CONS ;
+           DIG 2 ;
+           SWAP ;
+           EXEC } ;
+       PAIR }

@@ -12,6 +12,8 @@
 
 ## LiquidLocker
 
+## DeFiStrategy
+
 ```mermaid
 ---
 title: Lease creation
@@ -88,3 +90,8 @@ flowchart TD
     lm -->|refund| ga
 
 ```
+
+# Fees
+
+- premium payment (10%)
+- DeFi (15%)

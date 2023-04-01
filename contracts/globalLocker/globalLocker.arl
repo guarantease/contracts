@@ -1,0 +1,40 @@
+archetype globalLocker(const token: address, const owner: address, const defiLocker: address, const liquidLocker: address)
+
+asset share identified by lease {
+    lease: address;
+    tokens: nat;
+    shares: rational;
+}
+
+variable globalDeFiShare: nat = 0
+variable last_rebalance: date = now
+
+import usdc from "./contracts/usdc/usdc.arl"
+
+// entries
+
+entry addLease(defiShare: nat, locked_tokens: nat) {
+    effect {
+        const defi_tokens = (locked_tokens * defiShare) div 10000;
+        transfer 0tz to entry usdc(token).%transfer((caller, self_address, locked_tokens));
+        transfer 0tz to entry usdc(token).approve((defiLocker, defi_tokens));
+        transfer 0tz to entry usdc(token).approve((liquidLocker, int_to_nat(locked_tokens - defi_tokens) ? the : 0));
+        // const token_balance = usdc(token).getBalance(self_address) ? the : 0;
+        // globalDeFiShare := ((globalDeFiShare * token_balance) div 10000 + defi_tokens) / (token_balance + locked_tokens);
+        // share.add({
+        //     lease = caller;
+        //     tokens = locked_tokens;
+        //     shares = (locked_tokens / (token_balance + locked_tokens))
+        // })
+    }
+}
+
+entry rebalance() {
+    require {
+        rebalance_too_soon: last_rebalance - now > 1d
+    }    
+    effect {
+        const self_balance = usdc(token).getBalance(self_address) ? the : 0;
+    }
+}
+// withdraw

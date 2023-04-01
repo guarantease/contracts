@@ -1,0 +1,10 @@
+{
+    "name": "USD Coin",
+    "symbol": "USDC",
+    "decimals": 18,
+    "description": "A test USDC",
+    "thumbnailUri": "ipfs://QmV17MDKrb3aCQa2a2SzBZaCeAeAFrpFmqCjn351cWApGS",
+    "isTransferable": true,
+    "isBooleanAmount": false,
+    "shouldPreferSymbol": true
+}

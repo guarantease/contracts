@@ -1,19 +1,25 @@
-archetype defiLocker(const globalLocker: address, const defiProtocol: address, const token: address)
+archetype defiLocker(const defiProtocol: address, const token: address)
 
-import lending from "./contracts/lending.tz"
 import usdc from "./contracts/usdc/usdc.arl"
 
-entry deposit(amount: nat) {
-    called by globalLocker
+variable globalLocker: option<address> = none
+
+entry set_global_locker(gl: address) {
     effect {
-        transfer 0tz to entry usdc(token).%tranfer((caller, self_address, amount))
+        globalLocker := some(gl)
     }
 }
 
-entry withdraw() {
-    called by globalLocker
+entry deposit(amount: nat) {
+    called by globalLocker ? the : self_address
     effect {
-        const balance = usdc(token).getBalance(self_address) ? the : 0;
-        transfer 0tz to entry usdc(token).%tranfer((self_address, caller, balance))
+        transfer 0tz to entry usdc(token).%transfer((caller, self_address, amount))
+    }
+}
+
+entry withdraw(self_balance: nat) {
+    called by globalLocker ? the : self_address
+    effect {
+        transfer 0tz to entry usdc(token).%transfer((self_address, caller, self_balance))
     }
 }

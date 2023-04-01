@@ -1,13 +1,13 @@
 archetype campaign(
   const renter: address, 
   const rent_token: address,
+  const max_expiry: date,
   // FA 1.2
   const max_supply : nat, 
   const metadata_coin : bytes
 )
 
 import usdc from "./contracts/usdc/usdc.arl"
-// import leaseManager from "./contracts/leaseManager/leaseManager.arl"
 
 states = | DepositsEnabled initial | SearchingOwner | Expired | Locked
 
@@ -72,19 +72,32 @@ transition close_deposits(){
   to SearchingOwner
 }
 
-transition settle_lock(owner: address) {
+transition settle_lock(owner: address, rent: nat, expiry: date) {
   no transfer
   called by renter
   require {
     not_expired: init_time + 4w > now;
     all_funds_collected: total_supply = max_supply;
+    valid_expiry: expiry <= max_expiry;
+    valid_rent: rent <= max_supply / ((max_expiry - now) / 4w)
   }
   from SearchingOwner
   to Locked
-  // with effect {
-  //   const op_addr : (operation * address) = create_contract(leaseManager, none, 0tz, storage_init);
-  //   transfer 0tz to entry usdc(rent_token).approve(());
-  // }
+  with effect {
+    const op_addr : (operation * address) = create_contract("./contracts/leaseManager/leaseManager.tz", none, 0tz, (
+      0i,
+      rent_token,
+      max_supply,
+      0,
+      0i,
+      rent,
+      expiry,
+      now,
+      owner
+    ));
+    operations := [op_addr[0]];
+    transfer 0tz to entry usdc(rent_token).approve((op_addr[1], total_supply));
+  }
 }
 
 transition cancel_campaign_for_insufficient_funds() {

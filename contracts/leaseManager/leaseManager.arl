@@ -1,30 +1,60 @@
-archetype leaseManager
+archetype leaseManager(const globalLocker: address, const token: address)
 
 import usdc from "./contracts/usdc/usdc.arl"
-import campaign from "./contracts/campaign/campaign.arl"
+// import campaign from "./contracts/campaign/campaign.arl"
+import gl from "./contracts/globalLocker/globalLocker.arl"
 
-states = | Unitialized initial | Initialized | Canceled
+states = | Unitialized initial | Initialized
 
-constant globalLocker: address = KT1LP5MjfRKNJcu174T3DwrPMcq1nsoYHuMu
-
-variable lpToken: option<address> = none
-variable underlyingToken: option<address> = none
+variable lpToken: address = tz1hmG8ChqnJSH4pkZMeHMp3Q4Rm7inBEFCH
 variable lpTokenMaxSupply: nat = 0
+variable already_claimed: nat = 0
+variable renter_balance: int = 0
+variable rent: nat = 0
+variable expiration: date = int_to_date(0)
+variable last_time_claimed: date = int_to_date(0)
+variable owner: address = tz1hmG8ChqnJSH4pkZMeHMp3Q4Rm7inBEFCH
 
-// set the underlying lp to caller
-transition intialize(lunderlyingToken: address, max_supply: nat) {
+transition initialize() {
     from Unitialized
     to Initialized
     with effect {
-        lpTokenMaxSupply := max_supply;
-        underlyingToken := some(lunderlyingToken);
-        lpToken := some(caller);
-        match underlyingToken with
-        | some(token) -> 
-            transfer 0tz to entry usdc(token).%transfer((caller, self_address, max_supply));
-            transfer 0tz to entry usdc(token).approve((globalLocker, max_supply))
-            // call globalLocker
-        | none -> fail("")
-        end
+        transfer 0tz to entry usdc(token).%transfer((lpToken, self_address, lpTokenMaxSupply));
+        transfer 0tz to entry usdc(token).approve((globalLocker, lpTokenMaxSupply));
+        transfer 0tz to entry gl(globalLocker).addLease((5000,lpTokenMaxSupply))
+    }
+}
+
+entry deposit_rent(amount: nat) {
+    state is Initialized
+    effect {
+        transfer 0tz to entry usdc(token).%transfer((caller, self_address, amount));
+        renter_balance += amount
+    }
+}
+
+entry claim_rent() {
+    called by owner
+    state is Initialized
+    effect {
+        var claimable = rent;
+        if (last_time_claimed >= int_to_date(0)) then
+            claimable := (int_to_nat((now - last_time_claimed) div 4w) ? the : 0) * rent;
+        last_time_claimed := now;
+        renter_balance -= claimable;
+        if (renter_balance <= 0) then
+            transfer 0tz to entry gl(globalLocker).withdraw((claimable, caller))
+        else
+            transfer 0tz to entry usdc(token).%transfer((self_address, caller, claimable))
+    }
+}
+
+entry exit() {
+    require {
+        expired: now > expiration
+    }
+    effect {
+        const lpBalance ?= call_view<nat>(lpToken, "vgetBalance", caller) : 0;
+        transfer 0tz to entry gl(globalLocker).withdraw((lpBalance, caller))
     }
 }

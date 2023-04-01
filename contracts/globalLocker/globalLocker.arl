@@ -1,31 +1,101 @@
-archetype globalLocker(const token: address, const owner: address, const defiLocker: address, const liquidLocker: address)
+archetype globalLocker(const token: address, const owner: address, const defiLocker: address)
 
 asset share identified by lease {
     lease: address;
     tokens: nat;
-    shares: rational;
 }
 
 variable globalDeFiShare: nat = 0
-variable last_rebalance: date = now
+variable last_rebalance: date = int_to_date(0)
+record leaseToEditType {
+    lease_address: address;
+    lease_locked_tokens: nat;
+    lease_defi_tokens: nat;
+}
+variable leaseToEdit: option<leaseToEditType> = none
 
 import usdc from "./contracts/usdc/usdc.arl"
+import dfLocker from "./contracts/defiLocker/defiLocker.arl"
 
-// entries
+entry addLeaseGetBalanceCallback(token_balance: nat) {
+    called by token
+    require{
+        lease_to_edit_not_empty: is_some(leaseToEdit)
+    }
+    effect {
+        match leaseToEdit with
+        | some(toEdit) -> globalDeFiShare := ((globalDeFiShare * token_balance) div 10000 + toEdit.lease_defi_tokens) div (token_balance + toEdit.lease_locked_tokens);
+            share.add({
+                lease = toEdit.lease_address;
+                tokens = toEdit.lease_locked_tokens
+            });
+            leaseToEdit := none
+        | none -> fail("leaseToEdit must not be empty")
+        end
+    }
+}
 
 entry addLease(defiShare: nat, locked_tokens: nat) {
+    fail if{
+        lease_to_edit_empty: is_some(leaseToEdit)
+    }
     effect {
-        const defi_tokens = (locked_tokens * defiShare) div 10000;
+        var defi_tokens = (locked_tokens * defiShare) div 10000;
         transfer 0tz to entry usdc(token).%transfer((caller, self_address, locked_tokens));
         transfer 0tz to entry usdc(token).approve((defiLocker, defi_tokens));
-        transfer 0tz to entry usdc(token).approve((liquidLocker, int_to_nat(locked_tokens - defi_tokens) ? the : 0));
-        // const token_balance = usdc(token).getBalance(self_address) ? the : 0;
-        // globalDeFiShare := ((globalDeFiShare * token_balance) div 10000 + defi_tokens) / (token_balance + locked_tokens);
-        // share.add({
-        //     lease = caller;
-        //     tokens = locked_tokens;
-        //     shares = (locked_tokens / (token_balance + locked_tokens))
-        // })
+        leaseToEdit := some({
+            lease_address = caller;
+            lease_locked_tokens = locked_tokens;
+            lease_defi_tokens = defi_tokens
+        });
+        transfer 0tz to entry usdc(token).getBalance(((self_address), self.addLeaseGetBalanceCallback))
+    }
+}
+
+record rebalanceSectorBalances {
+    rebalance_self_balance: nat;
+    rebalance_defi_balance: nat;
+    step: nat;
+}
+variable rebalanceBalances: option<rebalanceSectorBalances> = none
+
+entry executeRebalance(data: rebalanceSectorBalances) {
+    called by self_address
+    effect {
+        transfer 0tz to entry dfLocker(defiLocker).withdraw((data.rebalance_defi_balance));
+        const total_balance = data.rebalance_self_balance +  data.rebalance_defi_balance;
+        const tokens_in_defi = total_balance div globalDeFiShare; 
+        transfer 0tz to entry dfLocker(defiLocker).deposit((tokens_in_defi));
+    }
+
+}
+
+entry rebalanceGetBalanceCallback(token_balance: nat) {
+    called by token
+    effect {
+        match rebalanceBalances with 
+        | some(balances) -> 
+            if(balances.step = 1) then
+                rebalanceBalances := some({
+                    rebalance_self_balance = balances.rebalance_self_balance;
+                    rebalance_defi_balance = token_balance;
+                    step = 2
+                })
+            else
+                rebalanceBalances := none;
+                transfer 0tz to entry self.executeRebalance({
+                    rebalance_self_balance = balances.rebalance_self_balance;
+                    rebalance_defi_balance = balances.rebalance_defi_balance;
+                    step = 3
+                })
+                
+
+        | none -> rebalanceBalances := some({
+            rebalance_self_balance = token_balance;
+            rebalance_defi_balance = 0;
+            step = 1
+        })
+        end
     }
 }
 
@@ -34,7 +104,19 @@ entry rebalance() {
         rebalance_too_soon: last_rebalance - now > 1d
     }    
     effect {
-        const self_balance = usdc(token).getBalance(self_address) ? the : 0;
+        transfer 0tz to entry usdc(token).getBalance(((self_address), self.rebalanceGetBalanceCallback));
+        transfer 0tz to entry usdc(token).getBalance(((defiLocker), self.rebalanceGetBalanceCallback));
     }
 }
-// withdraw
+
+entry withdraw(amount: nat, receiver: address) {
+    require {
+        enough_tokens: share[caller].tokens >= amount
+    }
+    effect {
+        share.update(caller, {
+           tokens-=amount
+        });
+        transfer 0tz to entry usdc(token).%transfer((self_address, receiver, amount))
+    }
+}

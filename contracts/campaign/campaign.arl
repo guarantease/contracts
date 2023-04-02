@@ -24,7 +24,6 @@ asset token_metadata to big_map {
   {TOKEN_ID; TOKEN_ID; [("", metadata_coin)]}
 }
 
-
 // Vue permettant de récupérer le solde d'un garant.
 view vgetBalance (owner : address) : nat {
   return (ledger[owner] ? the.tokens : 0)
@@ -84,12 +83,13 @@ transition settle_lock(owner: address, rent: nat, expiry: date) {
       0i,
       rent_token,
       max_supply,
-      0,
       0i,
       rent,
       expiry,
       now,
-      owner
+      owner,
+      premium,
+      none<address>
     ));
     operations := [op_addr[0]];
     transfer 0tz to entry usdc(rent_token).approve((op_addr[1], total_supply));

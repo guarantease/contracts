@@ -8,12 +8,12 @@ states = | Unitialized initial | Initialized
 
 variable lpToken: address = tz1hmG8ChqnJSH4pkZMeHMp3Q4Rm7inBEFCH
 variable lpTokenMaxSupply: nat = 0
-variable already_claimed: nat = 0
 variable renter_balance: int = 0
 variable rent: nat = 0
 variable expiration: date = int_to_date(0)
 variable last_time_claimed: date = int_to_date(0)
 variable owner: address = tz1hmG8ChqnJSH4pkZMeHMp3Q4Rm7inBEFCH
+variable premium: nat = 0
 
 // Fonction pour initialiser le contrat en transférant le solde des jetons LP au contrat et en approuvant le GlobalLocker.
 transition initialize() {
@@ -44,7 +44,7 @@ entry claim_rent() {
         if (last_time_claimed >= int_to_date(0)) then
             claimable := (int_to_nat((now - last_time_claimed) div 4w) ? the : 0) * rent;
         last_time_claimed := now;
-        renter_balance -= claimable;
+        renter_balance -= claimable * (10000 + premium) div 10000;
         if (renter_balance <= 0) then
             transfer 0tz to entry gl(globalLocker).withdraw((claimable, caller))
         else

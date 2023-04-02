@@ -2,18 +2,20 @@
     (pair (int %_state)
           (address %lpToken)
           (nat %lpTokenMaxSupply)
-          (nat %already_claimed)
           (int %renter_balance)
           (nat %rent)
           (timestamp %expiration)
           (timestamp %last_time_claimed)
-          (address %owner)) ;
+          (address %owner)
+          (nat %premium)
+          (option %claiming_address address)) ;
   parameter
-    (or (or (unit %initialize) (nat %deposit_rent)) (or (unit %claim_rent) (unit %exit))) ;
+    (or (or (unit %initialize) (nat %deposit_rent))
+        (or (or (unit %claim_rent) (nat %claimWithBalance)) (or (unit %claim) (unit %exit)))) ;
   code { NIL operation ;
          SWAP ;
          UNPAIR ;
-         DIP 1 { UNPAIR 9 } ;
+         DIP 1 { UNPAIR 10 } ;
          IF_LEFT
            { IF_LEFT
                { DROP 1 ;
@@ -24,7 +26,7 @@
                  EQ ;
                  IF { NIL operation ;
                       NIL operation ;
-                      DUP 13 ;
+                      DUP 14 ;
                       ITER { CONS } ;
                       PUSH address "KT1GaP9kQtU2ETjNTK5egQ4PpCbLCG5Lm9HD" ;
                       CONTRACT %transfer (pair address address nat) ;
@@ -40,11 +42,11 @@
                       TRANSFER_TOKENS ;
                       CONS ;
                       ITER { CONS } ;
-                      DIP 1 { DIG 10 ; DROP 1 } ;
-                      DUG 10 ;
+                      DIP 1 { DIG 11 ; DROP 1 } ;
+                      DUG 11 ;
                       NIL operation ;
                       NIL operation ;
-                      DUP 13 ;
+                      DUP 14 ;
                       ITER { CONS } ;
                       PUSH address "KT1GaP9kQtU2ETjNTK5egQ4PpCbLCG5Lm9HD" ;
                       CONTRACT %approve (pair address nat) ;
@@ -58,11 +60,11 @@
                       TRANSFER_TOKENS ;
                       CONS ;
                       ITER { CONS } ;
-                      DIP 1 { DIG 10 ; DROP 1 } ;
-                      DUG 10 ;
+                      DIP 1 { DIG 11 ; DROP 1 } ;
+                      DUG 11 ;
                       NIL operation ;
                       NIL operation ;
-                      DUP 13 ;
+                      DUP 14 ;
                       ITER { CONS } ;
                       PUSH address "KT1XuygkDou41uPfz3G4kZKDoBMgn3fCSjHP" ;
                       CONTRACT %addLease (pair nat nat) ;
@@ -76,14 +78,14 @@
                       TRANSFER_TOKENS ;
                       CONS ;
                       ITER { CONS } ;
-                      DIP 1 { DIG 10 ; DROP 1 } ;
-                      DUG 10 ;
+                      DIP 1 { DIG 11 ; DROP 1 } ;
+                      DUG 11 ;
                       PUSH int 1 ;
                       DIP 1 { SWAP ; DROP 1 } ;
                       SWAP }
                     { PUSH string "INVALID_STATE" ; FAILWITH } ;
                  DROP 1 ;
-                 PAIR 9 ;
+                 PAIR 10 ;
                  SWAP ;
                  PAIR }
                { DUP 2 ;
@@ -93,7 +95,7 @@
                  IF { PUSH string "INVALID_STATE" ; FAILWITH } {} ;
                  NIL operation ;
                  NIL operation ;
-                 DUP 13 ;
+                 DUP 14 ;
                  ITER { CONS } ;
                  PUSH address "KT1GaP9kQtU2ETjNTK5egQ4PpCbLCG5Lm9HD" ;
                  CONTRACT %transfer (pair address address nat) ;
@@ -109,137 +111,277 @@
                  TRANSFER_TOKENS ;
                  CONS ;
                  ITER { CONS } ;
-                 DIP 1 { DIG 10 ; DROP 1 } ;
-                 DUG 10 ;
+                 DIP 1 { DIG 11 ; DROP 1 } ;
+                 DUG 11 ;
                  DUP ;
                  INT ;
-                 DUP 7 ;
+                 DUP 6 ;
                  ADD ;
-                 DIP 1 { DIG 5 ; DROP 1 } ;
-                 DUG 5 ;
+                 DIP 1 { DIG 4 ; DROP 1 } ;
+                 DUG 4 ;
                  DROP 1 ;
-                 PAIR 9 ;
+                 PAIR 10 ;
                  SWAP ;
                  PAIR } }
            { IF_LEFT
-               { DROP 1 ;
-                 DUP 9 ;
-                 SENDER ;
-                 COMPARE ;
-                 EQ ;
-                 NOT ;
-                 IF { PUSH string "INVALID_CALLER" ; FAILWITH } {} ;
-                 DUP ;
-                 PUSH int 1 ;
-                 COMPARE ;
-                 NEQ ;
-                 IF { PUSH string "INVALID_STATE" ; FAILWITH } {} ;
-                 DUP 6 ;
-                 PUSH timestamp 0 ;
-                 DUP 10 ;
-                 COMPARE ;
-                 GE ;
-                 IF { DUP 7 ;
-                      PUSH int 2419200 ;
-                      DUP 11 ;
-                      NOW ;
-                      SUB ;
-                      EDIV ;
-                      IF_NONE
-                        { PUSH string "DIV_BY_ZERO" ; FAILWITH }
-                        { DUP ; CAR ; SWAP ; DROP 1 } ;
-                      ISNAT ;
-                      IF_NONE { PUSH nat 0 } {} ;
-                      MUL ;
-                      SWAP ;
-                      DROP 1 }
-                    {} ;
-                 NOW ;
-                 DIP 1 { DIG 8 ; DROP 1 } ;
-                 DUG 8 ;
-                 DUP ;
-                 INT ;
-                 DUP 7 ;
-                 SUB ;
-                 DIP 1 { DIG 5 ; DROP 1 } ;
-                 DUG 5 ;
-                 PUSH int 0 ;
-                 DUP 7 ;
-                 COMPARE ;
-                 LE ;
-                 IF { NIL operation ;
-                      NIL operation ;
-                      DUP 13 ;
-                      ITER { CONS } ;
-                      PUSH address "KT1XuygkDou41uPfz3G4kZKDoBMgn3fCSjHP" ;
-                      CONTRACT %withdraw (pair nat address) ;
-                      IF_NONE
-                        { PUSH string "withdraw" ; PUSH string "ENTRY_NOT_FOUND" ; PAIR ; FAILWITH }
+               { IF_LEFT
+                   { DROP 1 ;
+                     DUP 8 ;
+                     SENDER ;
+                     COMPARE ;
+                     EQ ;
+                     NOT ;
+                     IF { PUSH string "INVALID_CALLER" ; FAILWITH } {} ;
+                     DUP ;
+                     PUSH int 1 ;
+                     COMPARE ;
+                     NEQ ;
+                     IF { PUSH string "INVALID_STATE" ; FAILWITH } {} ;
+                     DUP 5 ;
+                     PUSH timestamp 0 ;
+                     DUP 9 ;
+                     COMPARE ;
+                     GE ;
+                     IF { DUP 6 ;
+                          PUSH int 2419200 ;
+                          DUP 10 ;
+                          NOW ;
+                          SUB ;
+                          EDIV ;
+                          IF_NONE
+                            { PUSH string "DIV_BY_ZERO" ; FAILWITH }
+                            { DUP ; CAR ; SWAP ; DROP 1 } ;
+                          ISNAT ;
+                          IF_NONE { PUSH nat 0 } {} ;
+                          MUL ;
+                          SWAP ;
+                          DROP 1 }
                         {} ;
-                      PUSH mutez 0 ;
-                      SENDER ;
-                      DUP 6 ;
-                      PAIR ;
-                      TRANSFER_TOKENS ;
-                      CONS ;
-                      ITER { CONS } ;
-                      DIP 1 { DIG 10 ; DROP 1 } ;
-                      DUG 10 }
-                    { NIL operation ;
-                      NIL operation ;
-                      DUP 13 ;
-                      ITER { CONS } ;
-                      PUSH address "KT1GaP9kQtU2ETjNTK5egQ4PpCbLCG5Lm9HD" ;
-                      CONTRACT %transfer (pair address address nat) ;
-                      IF_NONE
-                        { PUSH string "transfer" ; PUSH string "ENTRY_NOT_FOUND" ; PAIR ; FAILWITH }
+                     NOW ;
+                     DIP 1 { DIG 7 ; DROP 1 } ;
+                     DUG 7 ;
+                     PUSH nat 10000 ;
+                     DUP 11 ;
+                     PUSH nat 10000 ;
+                     ADD ;
+                     DUP 3 ;
+                     MUL ;
+                     EDIV ;
+                     IF_NONE
+                       { PUSH string "DIV_BY_ZERO" ; FAILWITH }
+                       { DUP ; CAR ; SWAP ; DROP 1 } ;
+                     INT ;
+                     DUP 6 ;
+                     SUB ;
+                     DIP 1 { DIG 4 ; DROP 1 } ;
+                     DUG 4 ;
+                     PUSH int 0 ;
+                     DUP 6 ;
+                     COMPARE ;
+                     LE ;
+                     IF { NIL operation ;
+                          NIL operation ;
+                          DUP 14 ;
+                          ITER { CONS } ;
+                          PUSH address "KT1XuygkDou41uPfz3G4kZKDoBMgn3fCSjHP" ;
+                          CONTRACT %withdraw (pair nat address) ;
+                          IF_NONE
+                            { PUSH string "withdraw" ; PUSH string "ENTRY_NOT_FOUND" ; PAIR ; FAILWITH }
+                            {} ;
+                          PUSH mutez 0 ;
+                          SENDER ;
+                          DUP 6 ;
+                          PAIR ;
+                          TRANSFER_TOKENS ;
+                          CONS ;
+                          ITER { CONS } ;
+                          DIP 1 { DIG 11 ; DROP 1 } ;
+                          DUG 11 }
+                        { NIL operation ;
+                          NIL operation ;
+                          DUP 14 ;
+                          ITER { CONS } ;
+                          PUSH address "KT1GaP9kQtU2ETjNTK5egQ4PpCbLCG5Lm9HD" ;
+                          CONTRACT %transfer (pair address address nat) ;
+                          IF_NONE
+                            { PUSH string "transfer" ; PUSH string "ENTRY_NOT_FOUND" ; PAIR ; FAILWITH }
+                            {} ;
+                          PUSH mutez 0 ;
+                          DUP 5 ;
+                          SENDER ;
+                          PAIR ;
+                          SELF_ADDRESS ;
+                          PAIR ;
+                          TRANSFER_TOKENS ;
+                          CONS ;
+                          ITER { CONS } ;
+                          DIP 1 { DIG 11 ; DROP 1 } ;
+                          DUG 11 } ;
+                     DROP 1 ;
+                     PAIR 10 ;
+                     SWAP ;
+                     PAIR }
+                   { DUP 11 ;
+                     IF_NONE { PUSH bool False } { PUSH bool True ; SWAP ; DROP 1 } ;
+                     NOT ;
+                     IF { PUSH string "someone_claimed" ;
+                          PUSH string "INVALID_CONDITION" ;
+                          PAIR ;
+                          FAILWITH }
                         {} ;
-                      PUSH mutez 0 ;
-                      DUP 5 ;
-                      SENDER ;
-                      PAIR ;
-                      SELF_ADDRESS ;
-                      PAIR ;
-                      TRANSFER_TOKENS ;
-                      CONS ;
-                      ITER { CONS } ;
-                      DIP 1 { DIG 10 ; DROP 1 } ;
-                      DUG 10 } ;
-                 DROP 1 ;
-                 PAIR 9 ;
-                 SWAP ;
-                 PAIR }
-               { DROP 1 ;
-                 DUP 7 ;
-                 NOW ;
-                 COMPARE ;
-                 GT ;
-                 NOT ;
-                 IF { PUSH string "expired" ; PUSH string "INVALID_CONDITION" ; PAIR ; FAILWITH }
-                    {} ;
-                 DUP 2 ;
-                 SENDER ;
-                 VIEW "vgetBalance" nat ;
-                 IF_NONE { PUSH nat 0 ; FAILWITH } {} ;
-                 NIL operation ;
-                 NIL operation ;
-                 DUP 13 ;
-                 ITER { CONS } ;
-                 PUSH address "KT1XuygkDou41uPfz3G4kZKDoBMgn3fCSjHP" ;
-                 CONTRACT %withdraw (pair nat address) ;
-                 IF_NONE
-                   { PUSH string "withdraw" ; PUSH string "ENTRY_NOT_FOUND" ; PAIR ; FAILWITH }
-                   {} ;
-                 PUSH mutez 0 ;
-                 SENDER ;
-                 DUP 6 ;
-                 PAIR ;
-                 TRANSFER_TOKENS ;
-                 CONS ;
-                 ITER { CONS } ;
-                 DIP 1 { DIG 10 ; DROP 1 } ;
-                 DUG 10 ;
-                 DROP 1 ;
-                 PAIR 9 ;
-                 SWAP ;
-                 PAIR } } } }
+                     DUP 11 ;
+                     IF_NONE
+                       { PUSH string "" ; FAILWITH }
+                       { PUSH nat 1 ;
+                         DUP 3 ;
+                         INT ;
+                         PAIR ;
+                         PUSH nat 1 ;
+                         DUP 6 ;
+                         PUSH unit Unit ;
+                         VIEW "vgetTotalSupply" nat ;
+                         IF_NONE { PUSH nat 0 } {} ;
+                         INT ;
+                         PAIR ;
+                         PUSH nat 1 ;
+                         DUP 7 ;
+                         DUP 5 ;
+                         VIEW "vgetBalance" nat ;
+                         IF_NONE { PUSH nat 0 } {} ;
+                         INT ;
+                         PAIR ;
+                         DIP 1 { UNPAIR } ;
+                         UNPAIR ;
+                         DIG 3 ;
+                         DUP ;
+                         DIG 3 ;
+                         DUP ;
+                         DUG 4 ;
+                         MUL ;
+                         PUSH nat 0 ;
+                         COMPARE ;
+                         EQ ;
+                         IF { PUSH string "DIV_BY_ZERO" ; FAILWITH } {} ;
+                         PUSH int 0 ;
+                         DIG 4 ;
+                         DUP ;
+                         DUG 5 ;
+                         COMPARE ;
+                         GE ;
+                         IF { INT } { NEG } ;
+                         MUL ;
+                         DIP 1 { MUL ; ABS } ;
+                         PAIR ;
+                         DIP 1 { UNPAIR } ;
+                         UNPAIR ;
+                         DIP 1 { SWAP } ;
+                         MUL ;
+                         DIP 1
+                             { MUL ;
+                               DUP ;
+                               PUSH nat 0 ;
+                               COMPARE ;
+                               EQ ;
+                               IF { PUSH string "DIV_BY_ZERO" ; FAILWITH } {} } ;
+                         EDIV ;
+                         IF_NONE
+                           { PUSH string "DIV_BY_ZERO" ; FAILWITH }
+                           { UNPAIR ; SWAP ; INT ; EQ ; IF {} { PUSH int 1 ; ADD } } ;
+                         ISNAT ;
+                         IF_NONE { PUSH nat 0 } {} ;
+                         NIL operation ;
+                         NIL operation ;
+                         DUP 16 ;
+                         ITER { CONS } ;
+                         PUSH address "KT1GaP9kQtU2ETjNTK5egQ4PpCbLCG5Lm9HD" ;
+                         CONTRACT %transfer (pair address address nat) ;
+                         IF_NONE
+                           { PUSH string "transfer" ; PUSH string "ENTRY_NOT_FOUND" ; PAIR ; FAILWITH }
+                           {} ;
+                         PUSH mutez 0 ;
+                         DUP 5 ;
+                         DUP 7 ;
+                         PAIR ;
+                         SELF_ADDRESS ;
+                         PAIR ;
+                         TRANSFER_TOKENS ;
+                         CONS ;
+                         ITER { CONS } ;
+                         DIP 1 { DIG 13 ; DROP 1 } ;
+                         DUG 13 ;
+                         NONE address ;
+                         DIP 1 { DIG 12 ; DROP 1 } ;
+                         DUG 12 ;
+                         DROP 2 } ;
+                     DROP 1 ;
+                     PAIR 10 ;
+                     SWAP ;
+                     PAIR } }
+               { IF_LEFT
+                   { DROP 1 ;
+                     SENDER ;
+                     SOME ;
+                     DIP 1 { DIG 9 ; DROP 1 } ;
+                     DUG 9 ;
+                     NIL operation ;
+                     NIL operation ;
+                     DUP 13 ;
+                     ITER { CONS } ;
+                     PUSH address "KT1GaP9kQtU2ETjNTK5egQ4PpCbLCG5Lm9HD" ;
+                     CONTRACT %getBalance (pair address (contract nat)) ;
+                     IF_NONE
+                       { PUSH string "getBalance" ; PUSH string "ENTRY_NOT_FOUND" ; PAIR ; FAILWITH }
+                       {} ;
+                     PUSH mutez 0 ;
+                     SELF_ADDRESS ;
+                     CONTRACT %claimWithBalance nat ;
+                     IF_NONE
+                       { PUSH string "claimWithBalance" ;
+                         PUSH string "ENTRY_NOT_FOUND" ;
+                         PAIR ;
+                         FAILWITH }
+                       {} ;
+                     SENDER ;
+                     PAIR ;
+                     TRANSFER_TOKENS ;
+                     CONS ;
+                     ITER { CONS } ;
+                     DIP 1 { DIG 10 ; DROP 1 } ;
+                     DUG 10 ;
+                     PAIR 10 ;
+                     SWAP ;
+                     PAIR }
+                   { DROP 1 ;
+                     DUP 6 ;
+                     NOW ;
+                     COMPARE ;
+                     GT ;
+                     NOT ;
+                     IF { PUSH string "expired" ; PUSH string "INVALID_CONDITION" ; PAIR ; FAILWITH }
+                        {} ;
+                     DUP 2 ;
+                     SENDER ;
+                     VIEW "vgetBalance" nat ;
+                     IF_NONE { PUSH nat 0 ; FAILWITH } {} ;
+                     NIL operation ;
+                     NIL operation ;
+                     DUP 14 ;
+                     ITER { CONS } ;
+                     PUSH address "KT1XuygkDou41uPfz3G4kZKDoBMgn3fCSjHP" ;
+                     CONTRACT %withdraw (pair nat address) ;
+                     IF_NONE
+                       { PUSH string "withdraw" ; PUSH string "ENTRY_NOT_FOUND" ; PAIR ; FAILWITH }
+                       {} ;
+                     PUSH mutez 0 ;
+                     SENDER ;
+                     DUP 6 ;
+                     PAIR ;
+                     TRANSFER_TOKENS ;
+                     CONS ;
+                     ITER { CONS } ;
+                     DIP 1 { DIG 11 ; DROP 1 } ;
+                     DUG 11 ;
+                     DROP 1 ;
+                     PAIR 10 ;
+                     SWAP ;
+                     PAIR } } } } }

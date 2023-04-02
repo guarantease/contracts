@@ -35,6 +35,7 @@ entry addLeaseGetBalanceCallback(token_balance: nat) {
     }
 }
 
+// Fonction permettant de rajouter un bail avec une part DeFi et un nombre de jetons verrouillés
 entry addLease(defiShare: nat, locked_tokens: nat) {
     fail if{
         lease_to_edit_empty: is_some(leaseToEdit)
@@ -98,7 +99,8 @@ entry rebalanceGetBalanceCallback(token_balance: nat) {
         end
     }
 }
-
+ 
+// Fonction appelé tous les jours permettant d'assurer l'équilibrage entre la partie DeFi et la partie liquide
 entry rebalance() {
     require {
         rebalance_too_soon: last_rebalance - now > 1d
@@ -109,6 +111,7 @@ entry rebalance() {
     }
 }
 
+// Fonction permettant de retirer des jetons du contract en fonction de la part du bail de l'appelant
 entry withdraw(amount: nat, receiver: address) {
     require {
         enough_tokens: share[caller].tokens >= amount

@@ -4,12 +4,14 @@ import usdc from "./contracts/usdc/usdc.arl"
 
 variable globalLocker: option<address> = none
 
+// Fonction permettant de créer la pool contenant toutes les liquidités
 entry set_global_locker(gl: address) {
     effect {
         globalLocker := some(gl)
     }
 }
 
+// Fonction permettant de déposer des liquidités dans la pool 
 entry deposit(amount: nat) {
     called by globalLocker ? the : self_address
     effect {
@@ -17,6 +19,7 @@ entry deposit(amount: nat) {
     }
 }
 
+// Fonction permettant de retirer des liquidités dans la pool 
 entry withdraw(self_balance: nat) {
     called by globalLocker ? the : self_address
     effect {

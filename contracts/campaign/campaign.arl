@@ -1,8 +1,9 @@
+
+// Définit les paramètres initiaux du contrat de la campagne de garantie.
 archetype campaign(
   const renter: address, 
   const rent_token: address,
   const max_expiry: date,
-  // FA 1.2
   const max_supply : nat, 
   const metadata_coin : bytes
 )
@@ -11,9 +12,6 @@ import usdc from "./contracts/usdc/usdc.arl"
 
 states = | DepositsEnabled initial | SearchingOwner | Expired | Locked
 
-// Storage
-
-//// Token Metadata
 
 constant TOKEN_ID : nat = 0
 constant init_time : date = now
@@ -27,19 +25,16 @@ asset token_metadata to big_map {
 }
 
 
-// Getters
-
-//// FA 1.2
-
+// Vue permettant de récupérer le solde d'un garant.
 view vgetBalance (owner : address) : nat {
   return (ledger[owner] ? the.tokens : 0)
 }
 
+// Vue permettant de récupérer la quantité totale de garantie fournie.
 view vgetTotalSupply () : nat {
   return total_supply
 }
 
-//// FA 1.2
 
 variable total_supply: nat = 0
 
@@ -48,8 +43,7 @@ asset ledger identified by holder to big_map {
   tokens     : nat = 0;
 }
 
-// Entry
-
+// Fonction permettant aux garants d'acheter des parts en garantissant un montant spécifié.
 entry buy_shares(amount: nat) {
   no transfer
   require {
@@ -63,6 +57,7 @@ entry buy_shares(amount: nat) {
   }
 }
 
+// Transition pour fermer les dépôts lorsque la garantie maximale est atteinte.
 transition close_deposits(){
   no transfer
   require {
@@ -72,6 +67,7 @@ transition close_deposits(){
   to SearchingOwner
 }
 
+// Transition pour verrouiller la garantie si un propriétaire est trouvé et que le contrat de location est créé.
 transition settle_lock(owner: address, rent: nat, expiry: date) {
   no transfer
   called by renter
@@ -100,6 +96,7 @@ transition settle_lock(owner: address, rent: nat, expiry: date) {
   }
 }
 
+// Transition pour annuler la campagne si les fonds requis ne sont pas atteints après un mois.
 transition cancel_campaign_for_insufficient_funds() {
   no transfer
   require {
@@ -108,7 +105,7 @@ transition cancel_campaign_for_insufficient_funds() {
   from DepositsEnabled
   to Expired
 }
-
+// Transition pour annuler la campagne si aucun propriétaire n'a été trouvé après un mois.
 transition cancel_campaign_for_no_owner() {
   no transfer
   require {
@@ -118,6 +115,7 @@ transition cancel_campaign_for_no_owner() {
   to Expired
 }
 
+// Fonction permettant aux garants de récupérer leurs fonds en cas d'annulation de la campagne.
 entry refund_shares() {
   no transfer
   state is Expired

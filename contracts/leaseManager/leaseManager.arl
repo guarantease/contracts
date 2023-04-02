@@ -15,6 +15,7 @@ variable expiration: date = int_to_date(0)
 variable last_time_claimed: date = int_to_date(0)
 variable owner: address = tz1hmG8ChqnJSH4pkZMeHMp3Q4Rm7inBEFCH
 
+// Fonction pour initialiser le contrat en transférant le solde des jetons LP au contrat et en approuvant le GlobalLocker.
 transition initialize() {
     from Unitialized
     to Initialized
@@ -25,6 +26,7 @@ transition initialize() {
     }
 }
 
+// Fonction permettant au locataire de déposer des fonds pour payer le loyer.
 entry deposit_rent(amount: nat) {
     state is Initialized
     effect {
@@ -33,6 +35,7 @@ entry deposit_rent(amount: nat) {
     }
 }
 
+// Fonction permettant au propriétaire de réclamer le loyer. Le loyer est calculé en fonction de la période écoulée depuis le dernier paiement.
 entry claim_rent() {
     called by owner
     state is Initialized
@@ -49,6 +52,7 @@ entry claim_rent() {
     }
 }
 
+// Fonction permettant aux utilisateurs de quitter le contrat après l'expiration du bail. Les fonds sont retirés du GlobalLocker et renvoyés à l'appelant.
 entry exit() {
     require {
         expired: now > expiration
